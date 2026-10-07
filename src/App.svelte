@@ -1,17 +1,17 @@
 <script lang="ts">
+  import DecidePanel from './lib/components/DecidePanel.svelte'
   import EmbeddingCard from './lib/components/EmbeddingCard.svelte'
   import InputPanel from './lib/components/InputPanel.svelte'
   import ModelStatus from './lib/components/ModelStatus.svelte'
   import SimilarityMatrix from './lib/components/SimilarityMatrix.svelte'
   import { embedder } from './lib/embedder.svelte'
-  import { fetchMedia } from './lib/media'
+  import { EXAMPLE_MEDIA, fetchMedia } from './lib/media'
   import { TASKS } from './lib/prefixes'
   import type { Item, ItemMeta } from './lib/types'
   import { DIMENSIONS, type Dimension } from './lib/vector'
   import type { EmbedInput } from './lib/worker/protocol'
 
-  const DOCS = 'https://huggingface.co/datasets/Xenova/transformers.js-docs/resolve/main'
-
+  let view = $state<'embed' | 'decide'>('embed')
   let items = $state.raw<Item[]>([])
   let dim = $state<Dimension>(768)
   let pending = $state(0)
@@ -67,7 +67,7 @@
         await embedText('search', query)
       }
       for (const file of ['cats.jpg', 'jfk.wav', 'sea-turtle.mp4']) {
-        const { input, meta } = await fetchMedia(`${DOCS}/${file}`)
+        const { input, meta } = await fetchMedia(`${EXAMPLE_MEDIA}/${file}`)
         await embed(input, meta)
       }
     })
@@ -95,51 +95,59 @@
       Model: <a href="https://huggingface.co/google/embeddinggemma-2" target="_blank" rel="noreferrer">google/embeddinggemma-2</a>
       (<a href="https://huggingface.co/onnx-community/embeddinggemma-2-ONNX" target="_blank" rel="noreferrer">ONNX</a>).
     </p>
+    <div class="segmented views" role="tablist" aria-label="View">
+      <button role="tab" aria-selected={view === 'embed'} class:active={view === 'embed'} onclick={() => (view = 'embed')}>Embed</button>
+      <button role="tab" aria-selected={view === 'decide'} class:active={view === 'decide'} onclick={() => (view = 'decide')}>Decide</button>
+    </div>
   </div>
   <div class="panel">
     <ModelStatus />
   </div>
 </header>
 
-<main>
-  <aside>
-    <InputPanel disabled={!ready} onembed={embed} />
-    <section class="panel examples">
-      <h2>Examples</h2>
-      <p class="muted small">From the model card. Media downloads from huggingface.co.</p>
-      <div class="row">
-        <button disabled={!ready} onclick={textExample}>Text search</button>
-        <button disabled={!ready} onclick={crossModalExample}>Cross-modal</button>
-      </div>
-    </section>
-  </aside>
-
-  <div class="results">
-    <section class="panel">
-      <div class="toolbar">
-        <h2>Similarity</h2>
-        {#if pending}<span class="muted small spinner">Embedding {pending} input{pending > 1 ? 's' : ''}…</span>{/if}
-        <div class="spacer"></div>
-        <div class="segmented" role="radiogroup" aria-label="Embedding dimensions">
-          {#each DIMENSIONS as d (d)}
-            <button role="radio" aria-checked={dim === d} class:active={dim === d} onclick={() => (dim = d)}>{d}d</button>
-          {/each}
+{#if view === 'decide'}
+  <DecidePanel />
+{:else}
+  <main>
+    <aside>
+      <InputPanel disabled={!ready} onembed={embed} />
+      <section class="panel examples">
+        <h2>Examples</h2>
+        <p class="muted small">From the model card. Media downloads from huggingface.co.</p>
+        <div class="row">
+          <button disabled={!ready} onclick={textExample}>Text search</button>
+          <button disabled={!ready} onclick={crossModalExample}>Cross-modal</button>
         </div>
-        <button disabled={!items.length} onclick={clear}>Clear</button>
-      </div>
-      {#if error}<p class="error">{error}</p>{/if}
-      <SimilarityMatrix {items} {dim} />
-    </section>
-
-    {#if items.length}
-      <section class="cards">
-        {#each items as item, index (item.id)}
-          <div class="panel"><EmbeddingCard {item} {index} {dim} onremove={() => remove(item)} /></div>
-        {/each}
       </section>
-    {/if}
-  </div>
-</main>
+    </aside>
+
+    <div class="results">
+      <section class="panel">
+        <div class="toolbar">
+          <h2>Similarity</h2>
+          {#if pending}<span class="muted small spinner">Embedding {pending} input{pending > 1 ? 's' : ''}…</span>{/if}
+          <div class="spacer"></div>
+          <div class="segmented" role="radiogroup" aria-label="Embedding dimensions">
+            {#each DIMENSIONS as d (d)}
+              <button role="radio" aria-checked={dim === d} class:active={dim === d} onclick={() => (dim = d)}>{d}d</button>
+            {/each}
+          </div>
+          <button disabled={!items.length} onclick={clear}>Clear</button>
+        </div>
+        {#if error}<p class="error">{error}</p>{/if}
+        <SimilarityMatrix {items} {dim} />
+      </section>
+
+      {#if items.length}
+        <section class="cards">
+          {#each items as item, index (item.id)}
+            <div class="panel"><EmbeddingCard {item} {index} {dim} onremove={() => remove(item)} /></div>
+          {/each}
+        </section>
+      {/if}
+    </div>
+  </main>
+{/if}
 
 <style>
   .top {
@@ -205,6 +213,10 @@
   }
   .spacer {
     flex: 1;
+  }
+  .views {
+    width: fit-content;
+    margin-top: 12px;
   }
   .segmented {
     display: flex;

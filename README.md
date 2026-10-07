@@ -10,6 +10,7 @@ npm run build   # static site in dist/
 
 - **Text**: pick a task prefix (search query, document, classification, …); the exact model input is previewed.
 - **Media**: drop images, audio (resampled to 16 kHz mono, first 90 s) or video (1 fps, max 16 frames). The caps keep inputs under the ~2,700-token WebGPU limit.
+- **Decide**: Jev-style structured decisions (`choice`, `boolean`, `score` questions against a text or media `state`) using MediaPipe Decision Maker's bi-encoder recipe: options are embedded once, centroid-whitened and cached; each request embeds only the state and returns probabilities, confidence and an expected score (`src/lib/decision.ts`).
 - **Results**: per-item heatmap, stats and JSON export; cosine-similarity matrix and nearest-neighbour ranking. The 768/512/256/128 switch applies Matryoshka truncation + re-normalization.
 
 The model runs in a Web Worker (`src/lib/worker/embed.worker.ts`); audio/video are decoded on the main thread (`src/lib/media.ts`) because those browser APIs are unavailable in workers.

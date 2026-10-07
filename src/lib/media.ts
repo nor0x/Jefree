@@ -139,6 +139,9 @@ export async function prepareMedia(blob: Blob, name: string): Promise<PreparedMe
   throw new Error(`Unsupported file type "${blob.type || 'unknown'}" for ${name}.`)
 }
 
+/** Sample media from the transformers.js docs, used by the examples. */
+export const EXAMPLE_MEDIA = 'https://huggingface.co/datasets/Xenova/transformers.js-docs/resolve/main'
+
 export async function fetchMedia(url: string) {
   const response = await fetch(url)
   if (!response.ok) throw new Error(`Could not download ${url} (${response.status}).`)
