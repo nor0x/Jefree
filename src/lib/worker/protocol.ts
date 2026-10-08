@@ -23,6 +23,6 @@ export type WorkerRequest =
 
 export type WorkerResponse =
   | { type: 'progress'; progress: number; loaded: number; total: number }
-  | { type: 'loaded'; id: number; backend: Backend }
+  | { type: 'loaded'; id: number; backend: Backend; dtype: Dtype }
   | { type: 'embedded'; id: number; values: Float32Array; tokens: number; elapsedMs: number }
   | { type: 'error'; id: number; message: string }

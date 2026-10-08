@@ -65,7 +65,7 @@
 </script>
 
 <section class="panel">
-  <div class="tabs" role="tablist">
+  <div class="tabs segmented" role="tablist">
     <button role="tab" aria-selected={tab === 'text'} class:active={tab === 'text'} onclick={() => (tab = 'text')}>Text</button>
     <button role="tab" aria-selected={tab === 'media'} class:active={tab === 'media'} onclick={() => (tab = 'media')}>
       Image · Audio · Video
@@ -168,22 +168,10 @@
 <style>
   .tabs {
     display: flex;
-    gap: 4px;
-    padding: 4px;
-    background: var(--surface-2);
-    border-radius: 10px;
     margin-bottom: 16px;
   }
   .tabs button {
     flex: 1;
-    border: none;
-    background: transparent;
-    color: var(--text-muted);
-  }
-  .tabs button.active {
-    background: var(--surface);
-    color: var(--text);
-    box-shadow: var(--shadow-sm);
   }
   .stack {
     display: flex;
@@ -222,7 +210,7 @@
     min-height: 220px;
     padding: 24px;
     text-align: center;
-    border: 2px dashed var(--border);
+    border: 1px dashed var(--border-strong);
     border-radius: 12px;
     cursor: pointer;
     transition: border-color 0.15s, background 0.15s;
@@ -237,7 +225,6 @@
     opacity: 0.6;
   }
   .error {
-    color: var(--danger);
-    font-size: 0.9rem;
+    margin-top: 12px;
   }
 </style>

@@ -17,6 +17,8 @@ class Embedder {
   totalBytes = $state(0)
   backend = $state<Backend | null>(null)
   dtype = $state<Dtype>('q4')
+  /** Set when the requested precision is unsupported on this device and another one was loaded. */
+  fallback = $state<string | null>(null)
   error = $state<string | null>(null)
 
   #worker: Worker | undefined
@@ -63,13 +65,16 @@ class Embedder {
     this.status = 'loading'
     this.error = null
     this.progress = 0
+    this.fallback = null
     try {
-      const { backend } = await this.#request<Extract<WorkerResponse, { type: 'loaded' }>>({
+      const { backend, dtype: loaded } = await this.#request<Extract<WorkerResponse, { type: 'loaded' }>>({
         type: 'load',
         id: this.#nextId++,
         dtype,
       })
       this.backend = backend
+      if (loaded !== dtype) this.fallback = `${dtype} needs WebGPU half-precision support, so ${loaded} was loaded instead.`
+      this.dtype = loaded
       this.status = 'ready'
     } catch (error) {
       this.status = 'error'

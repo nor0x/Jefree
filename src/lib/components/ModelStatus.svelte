@@ -49,9 +49,10 @@
     {:else if embedder.status === 'ready'}
       <span class="dot ok"></span>
       Ready · <strong>{embedder.backend}</strong> · {embedder.dtype}
+      {#if embedder.fallback}<span class="muted small">({embedder.fallback})</span>{/if}
     {:else}
       <span class="dot err"></span>
-      <span class="error">{embedder.error}</span>
+      <span>{embedder.error}</span>
     {/if}
   </div>
 </div>
@@ -92,12 +93,10 @@
     flex: none;
   }
   .dot.ok {
-    background: var(--ok);
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
   }
   .dot.err {
     background: var(--danger);
-  }
-  .error {
-    color: var(--danger);
   }
 </style>

@@ -113,7 +113,7 @@
     margin: 0;
     padding: 24px;
     text-align: center;
-    border: 1px dashed var(--border);
+    border: 1px dashed var(--border-strong);
     border-radius: 10px;
   }
   .scroll {
@@ -153,9 +153,14 @@
     align-items: center;
     gap: 6px;
     width: 100%;
+    justify-content: flex-start;
     padding: 4px 6px;
     border: none;
+    border-radius: 6px;
     background: none;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
     color: inherit;
     text-align: left;
   }

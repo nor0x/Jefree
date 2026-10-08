@@ -1,9 +1,9 @@
 import { mount } from 'svelte'
 import './fonts'
 import './app.css'
-import App from './App.svelte'
+import Playground from './Playground.svelte'
 
-const app = mount(App, {
+const app = mount(Playground, {
   target: document.getElementById('app')!,
 })
 

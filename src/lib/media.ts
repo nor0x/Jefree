@@ -13,6 +13,31 @@ export interface PreparedMedia {
   meta: ItemMeta
 }
 
+let nextAssetId = 0
+
+/**
+ * A prepared media file with a stable id. A class instance, so Svelte `$state` does not deep-proxy it and its
+ * buffers stay transferable to the worker.
+ */
+export class MediaAsset implements PreparedMedia {
+  readonly id = `m${nextAssetId++}`
+  constructor(
+    readonly input: EmbedInput,
+    readonly meta: ItemMeta,
+  ) {}
+
+  release() {
+    if (this.meta.mediaUrl) URL.revokeObjectURL(this.meta.mediaUrl)
+  }
+}
+
+/** Audio and video buffers are transferred to the worker, so send a copy and keep the original reusable. */
+export function cloneInput(input: EmbedInput): EmbedInput {
+  if (input.type === 'audio') return { ...input, samples: input.samples.slice() }
+  if (input.type === 'video') return { ...input, frames: input.frames.map((f) => ({ ...f, data: f.data.slice() })) }
+  return input
+}
+
 export async function decodeAudio16kMono(blob: Blob, maxSeconds = MAX_AUDIO_SECONDS) {
   const context = new OfflineAudioContext(1, 1, AUDIO_SAMPLE_RATE)
   const buffer = await context.decodeAudioData(await blob.arrayBuffer())
@@ -147,4 +172,9 @@ export async function fetchMedia(url: string) {
   if (!response.ok) throw new Error(`Could not download ${url} (${response.status}).`)
   const blob = await response.blob()
   return prepareMedia(blob, decodeURIComponent(url.split('/').pop() ?? url))
+}
+
+export async function loadAsset(source: Blob | string, name?: string): Promise<MediaAsset> {
+  const { input, meta } = typeof source === 'string' ? await fetchMedia(source) : await prepareMedia(source, name ?? 'file')
+  return new MediaAsset(input, meta)
 }

@@ -1,7 +1,9 @@
 // Structured decisions with a bi-encoder, following MediaPipe Decision Maker's EmbeddingGemma backend:
 // options are embedded once, centered on their question's centroid ("within-question whitening") and
 // L2-normalized; each request then embeds only the state and scores it against every option.
+// Options can also be images, audio or video (as in MediaPipe), embedded as-is instead of as text.
 import type { EmbedResult } from './embedder.svelte'
+import { cloneInput, type MediaAsset } from './media'
 import { TASKS } from './prefixes'
 import { dot, truncateNormalize } from './vector'
 import type { EmbedInput } from './worker/protocol'
@@ -11,11 +13,15 @@ export type QuestionKind = 'choice' | 'boolean' | 'score'
 export interface DecisionOption {
   key: string
   description: string
+  /** Embedded instead of the option text when set. */
+  media?: MediaAsset
 }
 
 export interface Question {
   name: string
   kind: QuestionKind
+  /** Human-readable question; for booleans it is display-only (the `condition` is what gets embedded). */
+  label: string
   instructions: string
   /** Boolean questions always have exactly two options: `true` then `false`. */
   options: DecisionOption[]
@@ -135,7 +141,8 @@ function parseQuestion(q: unknown, fallbackName: string, context: string): Quest
   if (!kind) {
     throw new Error(type ? `${where}: unknown type "${type}". Use choice, boolean or score.` : `${where}: add a "type".`)
   }
-  const instructions = [context, text(q.instructions ?? q.prompt ?? q.question) ?? ''].filter(Boolean).join(' ')
+  const asked = text(q.instructions ?? q.prompt ?? q.question)
+  const instructions = [context, asked ?? ''].filter(Boolean).join(' ')
 
   if (kind === 'boolean') {
     const condition = text(q.condition) ?? (text(q.prompt) || undefined)
@@ -145,11 +152,12 @@ function parseQuestion(q: unknown, fallbackName: string, context: string): Quest
     return {
       name,
       kind,
+      label: asked ?? condition,
       instructions: context,
       threshold,
       options: [
         { key: 'true', description: text(q.true) ?? condition },
-        { key: 'false', description: text(q.false) ?? `It is not the case that ${lowerFirst(condition)}` },
+        { key: 'false', description: text(q.false) ?? negate(condition) },
       ],
     }
   }
@@ -158,10 +166,11 @@ function parseQuestion(q: unknown, fallbackName: string, context: string): Quest
   if (options.length < 2) throw new Error(`${where}: needs at least two options in "criteria".`)
   const keys = new Set(options.map((o) => o.key))
   if (keys.size !== options.length) throw new Error(`${where}: option keys must be unique.`)
-  return { name, kind, instructions, options, threshold: 0.5 }
+  return { name, kind, label: asked ?? name, instructions, options, threshold: 0.5 }
 }
 
-const lowerFirst = (s: string) => s.charAt(0).toLowerCase() + s.slice(1)
+/** Default `false` description for a boolean condition. */
+export const negate = (condition: string) => `It is not the case that ${condition.charAt(0).toLowerCase()}${condition.slice(1)}`
 
 /** Parses a Jev-style `{state, questions}` payload; MediaPipe's `{input, context, questions}` schema works too. */
 export function parseRequest(source: string): DecisionRequest {
@@ -199,6 +208,35 @@ export function optionText(question: Question, option: DecisionOption): string {
   const label = option.key.replace(/[_-]+/g, ' ')
   const body = option.description ? (question.kind === 'boolean' ? option.description : `${label}: ${option.description}`) : label
   return classify.format([question.instructions, body].filter(Boolean).join(' — '), '')
+}
+
+/** Cache key of an option's embedding. */
+export const optionKey = (question: Question, option: DecisionOption) =>
+  option.media ? `media:${option.media.id}` : optionText(question, option)
+
+const optionInput = (question: Question, option: DecisionOption): EmbedInput =>
+  option.media ? cloneInput(option.media.input) : { type: 'text', text: optionText(question, option) }
+
+/** A media file as it appears in serialized JSON (the bytes are not part of the payload). */
+export const mediaRef = (media: MediaAsset) => ({ media: media.meta.modality, file: media.meta.label })
+
+/** Serializes questions back to a Jev `{state, questions}` payload, e.g. to show what a form produces. */
+export function toJev(state: unknown, questions: Question[]) {
+  const entries = questions.map((q) => {
+    const asked = q.label && q.label !== q.name ? { instructions: q.label } : {}
+    if (q.kind === 'boolean') {
+      const [yes, no] = q.options
+      return [q.name, { type: 'boolean', ...asked, condition: yes.description, false: no.description, threshold: q.threshold }]
+    }
+    const options = q.options.map((o) => (o.media ? { key: o.key, ...mediaRef(o.media) } : o))
+    const plain = q.options.every((o) => !o.media)
+    if (q.kind === 'score') {
+      return [q.name, { type: 'score', ...asked, rubric: plain ? q.options.map((o) => (o.description ? `${o.key}: ${o.description}` : o.key)) : options }]
+    }
+    const criteria = plain ? Object.fromEntries(q.options.map((o) => [o.key, o.description])) : options
+    return [q.name, { type: 'choice', ...asked, criteria }]
+  })
+  return { state, questions: Object.fromEntries(entries) }
 }
 
 /** Within-question centroid whitening: subtract the options' mean, then L2-normalize. */
@@ -272,20 +310,27 @@ export class Decider {
       this.#cache.clear()
       this.#cacheKey = this.model()
     }
-    const missing = [...new Set(questions.flatMap((q) => q.options.map((o) => optionText(q, o))))].filter((t) => !this.#cache.has(t))
-    const results = await Promise.all(missing.map((t) => this.embed({ type: 'text', text: t })))
-    results.forEach((r, i) => this.#cache.set(missing[i], r.values))
+    const missing = new Map<string, () => EmbedInput>()
+    for (const q of questions) {
+      for (const o of q.options) {
+        const key = optionKey(q, o)
+        if (!this.#cache.has(key)) missing.set(key, () => optionInput(q, o))
+      }
+    }
+    const keys = [...missing.keys()]
+    const results = await Promise.all([...missing.values()].map((input) => this.embed(input())))
+    results.forEach((r, i) => this.#cache.set(keys[i], r.values))
     return results.reduce((sum, r) => sum + r.tokens, 0)
   }
 
   async evaluate(state: EmbedInput, questions: Question[], temperature = DEFAULT_TEMPERATURE): Promise<DecisionResponse> {
     const start = performance.now()
-    const cachedBefore = questions.flatMap((q) => q.options.map((o) => optionText(q, o))).filter((t) => this.#cache.has(t)).length
+    const cachedBefore = questions.flatMap((q) => q.options.map((o) => optionKey(q, o))).filter((k) => this.#cache.has(k)).length
     const optionTokens = await this.prewarm(questions)
     const embedded = await this.embed(state)
     const results: Record<string, QuestionResult> = {}
     for (const q of questions) {
-      const vectors = q.options.map((o) => this.#cache.get(optionText(q, o))!)
+      const vectors = q.options.map((o) => this.#cache.get(optionKey(q, o))!)
       results[q.name] = scoreQuestion(q, embedded.values, vectors, temperature)
     }
     return {

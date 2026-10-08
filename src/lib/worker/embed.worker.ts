@@ -28,12 +28,12 @@ function post(message: WorkerResponse, transfer: Transferable[] = []) {
   self.postMessage(message, transfer)
 }
 
-async function detectBackend(): Promise<Backend> {
+async function detectBackend(): Promise<{ backend: Backend; f16: boolean }> {
   try {
     const adapter = await (navigator as Navigator & { gpu?: GPU }).gpu?.requestAdapter()
-    return adapter ? 'webgpu' : 'wasm'
+    return adapter ? { backend: 'webgpu', f16: adapter.features.has('shader-f16') } : { backend: 'wasm', f16: false }
   } catch {
-    return 'wasm'
+    return { backend: 'wasm', f16: false }
   }
 }
 
@@ -53,14 +53,16 @@ function disposeTensors(value: unknown, seen = new Set<unknown>()) {
   }
 }
 
-async function load(dtype: Dtype): Promise<Loaded> {
+async function load(requested: Dtype): Promise<Loaded> {
+  const { backend, f16 } = await detectBackend()
+  // Half-precision weights need WebGPU with shader-f16; fall back to q4 elsewhere.
+  const dtype: Dtype = !f16 && (requested === 'fp16' || requested === 'q4f16') ? 'q4' : requested
   if (current?.dtype === dtype) return current
   if (current) {
     await current.model.dispose().catch(() => undefined)
     current = undefined
   }
 
-  const backend = await detectBackend()
   const [processor, model] = await Promise.all([
     AutoProcessor.from_pretrained(MODEL_ID),
     AutoModel.from_pretrained(MODEL_ID, {
@@ -126,8 +128,8 @@ function errorMessage(error: unknown): string {
 self.addEventListener('message', async ({ data }: MessageEvent<WorkerRequest>) => {
   try {
     if (data.type === 'load') {
-      const { backend } = await enqueue(() => load(data.dtype))
-      post({ type: 'loaded', id: data.id, backend })
+      const { backend, dtype } = await enqueue(() => load(data.dtype))
+      post({ type: 'loaded', id: data.id, backend, dtype })
     } else if (data.type === 'embed') {
       const { values, tokens, elapsedMs } = await enqueue(async () => {
         if (!current) throw new Error('Load the model before embedding.')

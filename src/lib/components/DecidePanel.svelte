@@ -1,18 +1,9 @@
-<script lang="ts" module>
-  import { Decider } from '../decision'
-  import { embedder } from '../embedder.svelte'
-
-  // Module-level so cached option embeddings survive switching tabs.
-  const decider = new Decider(
-    (input) => embedder.embed(input),
-    () => `embeddinggemma-2-onnx-${embedder.dtype}`,
-  )
-</script>
-
 <script lang="ts">
+  import { decider } from '../decider'
   import { DECISION_EXAMPLES, type DecisionExample } from '../decision-examples'
   import { DEFAULT_TEMPERATURE, optionText, parseRequest, statePrompt, type DecisionResponse, type Question } from '../decision'
-  import { EXAMPLE_MEDIA, fetchMedia, prepareMedia, type PreparedMedia } from '../media'
+  import { embedder } from '../embedder.svelte'
+  import { cloneInput, EXAMPLE_MEDIA, fetchMedia, prepareMedia, type PreparedMedia } from '../media'
   import type { EmbedInput } from '../worker/protocol'
   import DecisionResult from './DecisionResult.svelte'
 
@@ -37,13 +28,6 @@
   })
   const hasState = $derived(!!media || !!parsed.request?.state)
   const canEvaluate = $derived(ready && !busy && !!parsed.request && hasState)
-
-  /** Audio and video buffers are transferred to the worker, so send a copy and keep the original reusable. */
-  function cloneInput(input: EmbedInput): EmbedInput {
-    if (input.type === 'audio') return { ...input, samples: input.samples.slice() }
-    if (input.type === 'video') return { ...input, frames: input.frames.map((f) => ({ ...f, data: f.data.slice() })) }
-    return input
-  }
 
   async function evaluate() {
     const request = parsed.request
@@ -295,8 +279,9 @@
     align-items: center;
     gap: 8px;
     padding: 6px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    background: var(--glass);
     font-weight: normal;
   }
   .media img {
@@ -315,7 +300,7 @@
   .drop {
     padding: 14px;
     text-align: center;
-    border: 2px dashed var(--border);
+    border: 1px dashed var(--border-strong);
     border-radius: 10px;
     color: var(--text-muted);
     font-weight: normal;
@@ -379,10 +364,6 @@
   .empty {
     padding: 48px 16px;
     text-align: center;
-  }
-  .error {
-    color: var(--danger);
-    font-size: 0.9rem;
   }
   @media (max-width: 900px) {
     main {
