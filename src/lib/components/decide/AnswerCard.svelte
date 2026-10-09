@@ -187,14 +187,14 @@
     position: relative;
     display: flex;
     justify-content: space-between;
-    padding: 6px 0;
+    padding: 6px 0 14px;
   }
   .scale::before {
     content: '';
     position: absolute;
     left: 12px;
     right: 12px;
-    top: 50%;
+    top: 18px;
     border-top: 1px solid var(--line);
   }
   .step {
@@ -212,19 +212,20 @@
   }
   .step.win {
     border-color: var(--accent);
+    background: linear-gradient(var(--accent-soft), var(--accent-soft)), var(--bg);
     color: var(--text);
   }
+  /* Expected score: a caret under the track, so it never covers a step's number. */
   .marker {
     position: absolute;
-    top: 50%;
-    width: 12px;
-    height: 12px;
-    margin: -6px 0 0 -6px;
-    border-radius: 50%;
-    background: var(--accent);
-    box-shadow:
-      0 0 0 3px var(--bg),
-      0 0 12px var(--accent);
+    top: 33px;
+    width: 0;
+    height: 0;
+    margin-left: -5px;
+    border: 5px solid transparent;
+    border-top: none;
+    border-bottom: 6px solid var(--accent);
+    filter: drop-shadow(0 0 4px var(--accent));
     transition: left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
   .bars {
