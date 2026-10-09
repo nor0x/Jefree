@@ -12,8 +12,21 @@ function read(): Theme {
   }
 }
 
+const DARK_QUERY = '(prefers-color-scheme: dark)'
+
 class ThemeState {
   current = $state<Theme>(read())
+  systemDark = $state(matchMedia(DARK_QUERY).matches)
+
+  constructor() {
+    // App-lifetime singleton, so the listener is never removed.
+    matchMedia(DARK_QUERY).addEventListener('change', (e) => (this.systemDark = e.matches))
+  }
+
+  /** The theme actually shown, resolving 'system' against the OS preference. */
+  get dark() {
+    return this.current === 'dark' || (this.current === 'system' && this.systemDark)
+  }
 
   set(theme: Theme) {
     this.current = theme

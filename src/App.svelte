@@ -7,6 +7,7 @@
   import QuestionEditor from './lib/components/decide/QuestionEditor.svelte'
   import SituationInput from './lib/components/decide/SituationInput.svelte'
   import Icon from './lib/components/Icon.svelte'
+  import Mascot from './lib/components/Mascot.svelte'
   import ThemeToggle from './lib/components/ThemeToggle.svelte'
   import { decider } from './lib/decider'
   import { DEFAULT_TEMPERATURE, mediaRef, parseRequest, statePrompt, toJev, type DecisionResponse, type QuestionKind } from './lib/decision'
@@ -119,15 +120,18 @@
 <hr class="hairline" />
 
 <div class="page">
-  <header class="hero">
-    <h1>Quick gut calls, <em>made on-device.</em></h1>
-    <p class="muted">
-      A lightweight, local-first experiment inspired by decision models like Jev, not a match for them. Under the hood,
-      EmbeddingGemma 2, an embedding model, is repurposed to weigh fixed answers against your situation. Describe it or
-      share a photo, sound or video, ask your questions, and get rough probabilities back. Nothing leaves your browser.
-    </p>
-    <ModelLoader dtype="fp16" />
-  </header>
+  <div class="hero-row">
+    <header class="hero">
+      <h1>Quick gut calls, <em>made on-device.</em></h1>
+      <p class="muted">
+        A lightweight, local-first experiment inspired by decision models like Jev, not a match for them. Under the hood,
+        EmbeddingGemma 2, an embedding model, is repurposed to weigh fixed answers against your situation. Describe it or
+        share a photo, sound or video, ask your questions, and get rough probabilities back. Nothing leaves your browser.
+      </p>
+      <ModelLoader dtype="fp16" />
+    </header>
+    <Mascot class="hero-mascot" size="clamp(190px, 22vw, 250px)" />
+  </div>
 
   <ExamplePicker examples={USER_EXAMPLES} active={activeExample} loading={loadingExample} disabled={!ready || !!loadingExample || busy} onpick={pickExample} />
 
@@ -205,6 +209,11 @@
   <JsonDrawer {request} {response} />
 
   <footer class="muted small">
+    <p class="credits">
+      Made by <a href="https://github.com/nor0x" target="_blank" rel="noreferrer">Johnny</a>
+      · Source on <a href="https://github.com/nor0x/Jevfree" target="_blank" rel="noreferrer">GitHub</a>
+      · Read the <a href="https://johnnys.news/2026/10/Jevfree-repurposing-an-embedding-model-for-decisions" target="_blank" rel="noreferrer">blog post</a>
+    </p>
     Model: <a href="https://huggingface.co/google/embeddinggemma-2" target="_blank" rel="noreferrer">google/embeddinggemma-2</a>
     · Method: <a href="https://developers.google.com/edge/mediapipe/solutions/decision/decision_maker" target="_blank" rel="noreferrer">MediaPipe Decision Maker</a>
     · Sample media from <a href="https://huggingface.co/datasets/Xenova/transformers.js-docs" target="_blank" rel="noreferrer">transformers.js docs</a>
@@ -244,6 +253,17 @@
     max-width: 1180px;
     margin: 0 auto;
     padding: 28px 16px 56px;
+  }
+  .hero-row {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 720px) auto;
+    justify-content: space-between;
+    align-items: end;
+    gap: 32px;
+  }
+  .hero-row :global(.hero-mascot) {
+    margin-right: clamp(0px, 4vw, 48px);
   }
   .hero {
     display: flex;
@@ -361,6 +381,10 @@
   footer {
     line-height: 1.8;
   }
+  .credits {
+    margin: 0 0 4px;
+    color: var(--text);
+  }
   @media (max-width: 960px) {
     .layout {
       grid-template-columns: minmax(0, 1fr);
@@ -369,6 +393,24 @@
       position: static;
       max-height: none;
       overflow: visible;
+    }
+  }
+  /* Narrow: the mascot tucks into the top-right corner beside the headline. */
+  @media (max-width: 720px) {
+    .hero-row {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .hero-row :global(.hero-mascot) {
+      height: 112px;
+      position: absolute;
+      top: -8px;
+      right: 0;
+      margin: 0;
+    }
+    /* Room beside and below the mascot so it never sits on the intro text. */
+    h1 {
+      min-height: 104px;
+      padding-right: 84px;
     }
   }
   @media (max-width: 480px) {

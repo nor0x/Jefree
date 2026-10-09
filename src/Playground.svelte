@@ -3,6 +3,7 @@
   import EmbeddingCard from './lib/components/EmbeddingCard.svelte'
   import Brand from './lib/components/Brand.svelte'
   import InputPanel from './lib/components/InputPanel.svelte'
+  import Mascot from './lib/components/Mascot.svelte'
   import ModelStatus from './lib/components/ModelStatus.svelte'
   import SimilarityMatrix from './lib/components/SimilarityMatrix.svelte'
   import ThemeToggle from './lib/components/ThemeToggle.svelte'
@@ -99,15 +100,18 @@
 
 <header class="top">
   <div class="brand">
-    <h1>EmbeddingGemma 2 Playground</h1>
-    <p class="muted">
-      Text, images, audio and video in one 768-d space, embedded entirely in your browser with WebGPU. Nothing is uploaded.
-      Model: <a href="https://huggingface.co/google/embeddinggemma-2" target="_blank" rel="noreferrer">google/embeddinggemma-2</a>
-      (<a href="https://huggingface.co/onnx-community/embeddinggemma-2-ONNX" target="_blank" rel="noreferrer">ONNX</a>).
-    </p>
-    <div class="segmented views" role="tablist" aria-label="View">
-      <button role="tab" aria-selected={view === 'embed'} class:active={view === 'embed'} onclick={() => (view = 'embed')}>Embed</button>
-      <button role="tab" aria-selected={view === 'decide'} class:active={view === 'decide'} onclick={() => (view = 'decide')}>Decide</button>
+    <Mascot class="top-mascot" size="132px" />
+    <div class="intro">
+      <h1>EmbeddingGemma 2 Playground</h1>
+      <p class="muted">
+        Text, images, audio and video in one 768-d space, embedded entirely in your browser with WebGPU. Nothing is uploaded.
+        Model: <a href="https://huggingface.co/google/embeddinggemma-2" target="_blank" rel="noreferrer">google/embeddinggemma-2</a>
+        (<a href="https://huggingface.co/onnx-community/embeddinggemma-2-ONNX" target="_blank" rel="noreferrer">ONNX</a>).
+      </p>
+      <div class="segmented views" role="tablist" aria-label="View">
+        <button role="tab" aria-selected={view === 'embed'} class:active={view === 'embed'} onclick={() => (view = 'embed')}>Embed</button>
+        <button role="tab" aria-selected={view === 'decide'} class:active={view === 'decide'} onclick={() => (view = 'decide')}>Decide</button>
+      </div>
     </div>
   </div>
   <div class="panel">
@@ -190,6 +194,17 @@
     line-height: 1.1;
     letter-spacing: -0.01em;
   }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .brand :global(.top-mascot) {
+    flex: none;
+  }
+  .intro {
+    min-width: 0;
+  }
   .brand p {
     margin: 0;
     font-size: 0.9rem;
@@ -264,6 +279,14 @@
     }
     aside {
       position: static;
+    }
+    .brand :global(.top-mascot) {
+      height: 96px;
+    }
+  }
+  @media (max-width: 480px) {
+    .brand :global(.top-mascot) {
+      display: none;
     }
   }
 </style>
